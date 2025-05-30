@@ -194,6 +194,6 @@ cython_debug/
 .cursorindexingignore
 
 # Custom
-data/storage/options
-data/storage/stocks
+# data/storage/options
+# data/storage/stocks
 venv
