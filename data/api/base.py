@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import List
 
-from models import Candle, ContractType
+from data.models import Candle, ContractType
 
 
 class BaseAPI(ABC):

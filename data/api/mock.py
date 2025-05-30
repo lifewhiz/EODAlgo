@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
-from api.base import BaseAPI
-from models import Candle
+from data.api.base import BaseAPI
+from data.models import Candle
 
 
 class MockAPI(BaseAPI):

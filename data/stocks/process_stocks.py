@@ -3,8 +3,8 @@ import json
 from typing import List
 from pathlib import Path
 
-from api.base import BaseAPI
-from models import Candle
+from data.api.base import BaseAPI
+from data.models import Candle
 import os
 
 BASE_DIR = Path("data/storage/stocks")

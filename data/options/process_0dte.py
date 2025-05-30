@@ -5,7 +5,7 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import List
 from pathlib import Path
-from models import Candle, Contract, ContractType
+from data.models import Candle, Contract, ContractType
 
 BASE_DIR = Path("data/storage/options")
 os.makedirs(BASE_DIR, exist_ok=True)
