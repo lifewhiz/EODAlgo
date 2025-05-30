@@ -8,7 +8,6 @@ START_DT = "2025-05-01"
 END_DT = "2025-05-24"
 
 
-options_api = PolygonAPI()
-stocks_api = YahooAPI()
-fetcher = Fetch0DTE(options_api, stocks_api, START_DT, END_DT)
+api = PolygonAPI()
+fetcher = Fetch0DTE(api, api, START_DT, END_DT)
 contracts = fetcher.fetch_0dte_bars_agg("SPX")
