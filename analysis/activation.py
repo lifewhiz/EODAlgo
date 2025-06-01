@@ -3,13 +3,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime, timedelta
-from data.models import Contract
+from data.models import Contract, ContractType
 from typing import List
 import os
 
 
 def compute_contract_jump_threshold(contracts: List[Contract]) -> float:
-    jumps = []
+    call_jumps, put_jumps = [], []
+
     for c in contracts:
         candles = c.data
         if not candles:
@@ -22,14 +23,19 @@ def compute_contract_jump_threshold(contracts: List[Contract]) -> float:
             jump = max(c.high for c in five_min_candles) - min(
                 c.low for c in five_min_candles
             )
-            jumps.append(jump)
+            jump_pct = (jump / min(c.low for c in five_min_candles)) * 100
+            if c.contract_type == ContractType.CALL:
+                call_jumps.append(jump_pct)
+            elif c.contract_type == ContractType.PUT:
+                put_jumps.append(jump_pct)
 
-    return pd.Series(jumps).quantile(0.75)
+    return pd.Series(call_jumps).quantile(0.5), pd.Series(put_jumps).quantile(0.5)
 
 
 def gather_activation_records(
     contracts: List[Contract],
-    jump_threshold: float,
+    call_threshold: float,
+    put_threshold: float,
 ) -> pd.DataFrame:
     records = []
 
@@ -62,7 +68,12 @@ def gather_activation_records(
 
             max_high = max(c.high for c in next_5_min_candles)
             jump = max_high - candle.close
-            activated = jump >= jump_threshold
+            jump_pct = (jump / candle.close) * 100
+            activated = jump_pct >= (
+                call_threshold
+                if contract.contract_type == ContractType.CALL
+                else put_threshold
+            )
 
             records.append(
                 {
@@ -78,8 +89,8 @@ def gather_activation_records(
 def plot_activation_times(
     contracts: List[Contract],
 ):
-    jump_threshold = compute_contract_jump_threshold(contracts)
-    df = gather_activation_records(contracts, jump_threshold)
+    call_thres, put_thres = compute_contract_jump_threshold(contracts)
+    df = gather_activation_records(contracts, call_thres, put_thres)
 
     if df.empty:
         print("No data to plot.")
@@ -134,11 +145,11 @@ def plot_activation_times(
     )
 
     ax1.set_title(
-        f"Activation Times for CALL Contracts (Jump_Threshold ≈ {jump_threshold:.2f}%)",
+        f"Activation Times for CALL Contracts (Jump_Threshold ≈ {call_thres:.2f}%)",
         fontsize=14,
     )
     ax2.set_title(
-        f"Activation Times for PUT Contracts (Jump_Threshold ≈ {jump_threshold:.2f}%)",
+        f"Activation Times for PUT Contracts (Jump_Threshold ≈ {put_thres:.2f}%)",
         fontsize=14,
     )
 
