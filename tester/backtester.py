@@ -10,7 +10,7 @@ from data.models import Contract
 from constants import MARKET_CLOSE
 from strategy.base_strategy import BaseStrategy
 from tester.models import CandleModel
-from tester.data_handler import DataHandler
+from data.data_handler import DataHandler
 
 
 class Backtester:

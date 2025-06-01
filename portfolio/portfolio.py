@@ -33,7 +33,3 @@ class Portfolio:
         print(f"Avg Gain: {avg_gain:.2f}, Avg Loss: {avg_loss:.2f}")
         print(f"Risk-Reward Ratio: {risk_reward:.2f}\n")
 
-        for p in positions:
-            print(
-                f"{p.contract.symbol} | {p.contract.expiry} | Strike: {p.contract.strike} | {p.entry_price:.2f} → {p.exit_price:.2f} | P&L: {p.pnl:.2f} ({p.pct_change:.1f}%)"
-            )

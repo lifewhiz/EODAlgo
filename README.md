@@ -5,8 +5,14 @@ A modular framework for simulating 0DTE (zero-days-to-expiry) options strategies
 ## 📁 Directory Structure
 
 ```graphql
+├── analysis/                 # Data visualization and insights
+│   ├── activation.py         # Activation time analysis
+│   ├── direction.py          # Directional move analysis
+│   └── expiry.py             # Expiry gain visualization
+├── artifacts/                # Saved figures and visual output
 ├── cli/                      # CLI commands for running the app
-│   └── commands.py
+│   ├── commands.py
+│   └── analysis_commands.py  # CLI entry points for analysis module
 ├── constants.py              # Global date range and shared constants
 ├── data/                     # Data-related modules
 │   ├── api/                  # Interfaces to external APIs (Polygon, Yahoo, Mock)
@@ -69,6 +75,12 @@ python main.py data --symbol SPX
 
 ```bash
 python main.py backtest --symbol SPX --strategy-name PutsExpiration
+```
+
+### 📊 Generate Analysis Visuals
+
+```bash
+python main.py analysis --symbol SPX
 ```
 
 ### 📈 Strategies

@@ -1,5 +1,6 @@
 from datetime import date
 import typer
+from cli.analysis_commands import metric_analysis
 from constants import END_DT, START_DT
 from data.api.polygon import PolygonAPI
 from data.options.fetch_0dte import Fetch0DTE
@@ -42,6 +43,14 @@ def data(symbol: str = "SPX"):
     Fetches the 0DTE data for the specified symbol.
     """
     data_command(symbol)
+
+
+@app.command()
+def analysis(symbol: str = "SPX"):
+    """
+    Runs EOD activation/movement/expiry gain analysis for a given symbol.
+    """
+    metric_analysis(symbol)
 
 
 if __name__ == "__main__":
