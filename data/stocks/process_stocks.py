@@ -4,11 +4,17 @@ from typing import List
 from pathlib import Path
 
 from data.api.base import BaseAPI
+from data.api.mock import MockAPI
 from data.models import Candle
 import os
 
 BASE_DIR = Path("data/storage/stocks")
 os.makedirs(BASE_DIR, exist_ok=True)
+
+
+def load_stock_from_json(symbol: str) -> List[Candle]:
+    process_stocks = ProcessStocks(MockAPI())
+    return process_stocks.load_stocks(symbol)
 
 
 class ProcessStocks:

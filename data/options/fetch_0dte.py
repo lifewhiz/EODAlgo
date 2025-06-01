@@ -1,19 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime
 import math
 from typing import Dict, List
 from data.api.base import BaseAPI
+from data.funcs import get_option_symbol, get_stock_symbol
 from data.options.process_0dte import load_contracts_from_json, save_contracts_as_json
 from data.stocks.process_stocks import ProcessStocks
 from data.models import Candle, Contract, ContractType
 import pandas_market_calendars as mcal
 import time
-
-INDEX_DT = {
-    "SPX": {
-        "option_symbol": "SPXW",
-        "stock_symbol": "^SPX",
-    }
-}
+from tqdm import tqdm
 
 
 class Fetch0DTE:
@@ -22,23 +17,21 @@ class Fetch0DTE:
     """
 
     def __init__(
-        self, options_api: BaseAPI, stocks_api: BaseAPI, start_dt: str, end_dt: str
+        self, options_api: BaseAPI, stocks_api: BaseAPI, start_dt: date, end_dt: date
     ):
+        self.start_dt = start_dt
+        self.end_dt = end_dt
         self.options_api = options_api
         self.stocks_process = ProcessStocks(stocks_api)
 
-        self.open_market_days = set(
-            list(
-                self.parse_dt(dt)
-                for dt in mcal.get_calendar("NYSE")
-                .valid_days(start_date=start_dt, end_date=end_dt)
-                .to_pydatetime()
-            )
+        self.open_market_days = list(
+            self.parse_dt(dt)
+            for dt in mcal.get_calendar("NYSE")
+            .valid_days(start_date=start_dt, end_date=end_dt)
+            .to_pydatetime()
         )
         if not self.open_market_days:
             raise ValueError("No open market days found in the specified range.")
-        self.start_dt = self.parse_dt_str(start_dt)
-        self.end_dt = self.parse_dt_str(end_dt)
 
         self.def_wait_time = 60  # Default wait time in seconds for API calls
         self.def_eod_timeframe = 30  # last 30 minutes of the day
@@ -47,7 +40,7 @@ class Fetch0DTE:
         self.existing_contracts = dict()
 
     def set_existing_contracts(self, symbol: str):
-        contracts = load_contracts_from_json(self.get_option_symbol(symbol))
+        contracts = load_contracts_from_json(get_option_symbol(symbol))
         self.existing_contracts = {contract.symbol: contract for contract in contracts}
 
     def parse_dt_str(self, dt_str: str) -> datetime:
@@ -84,12 +77,6 @@ class Fetch0DTE:
                 else:
                     print("Max retries reached. Returning empty list.")
                     return []
-
-    def get_option_symbol(self, symbol: str) -> str:
-        return INDEX_DT[symbol]["option_symbol"] if symbol in INDEX_DT else symbol
-
-    def get_stock_symbol(self, symbol: str) -> str:
-        return INDEX_DT[symbol]["stock_symbol"] if symbol in INDEX_DT else symbol
 
     def fetch_0dte_strikes(
         self,
@@ -131,7 +118,7 @@ class Fetch0DTE:
         dt: datetime,
     ) -> Contract:
         contract_symbol = self.options_api.format_occ_option_symbol(
-            self.get_option_symbol(symbol), dt, contract_type, contract_strike
+            get_option_symbol(symbol), dt, contract_type, contract_strike
         )
 
         if contract_symbol in self.existing_contracts:
@@ -163,30 +150,27 @@ class Fetch0DTE:
         """
         contracts = []
         contract_types = [ContractType.CALL, ContractType.PUT]
-        cur_dt = self.start_dt
 
         stock_candles = self.stocks_process.fetch_stocks(
-            symbol=self.get_stock_symbol(symbol),
+            symbol=get_stock_symbol(symbol),
             from_dt=self.start_dt,
             to_dt=self.end_dt,
         )
         self.set_existing_contracts(symbol)
 
-        while cur_dt <= self.end_dt:
-            if self.parse_dt(cur_dt) in self.open_market_days:
-                contract_strikes = self.fetch_0dte_strikes(stock_candles, cur_dt)
-                for contract_type in contract_types:
-                    for strike in contract_strikes[contract_type]:
-                        contracts.append(
-                            self.fetch_0dte_bars(
-                                symbol,
-                                strike,
-                                contract_type,
-                                cur_dt,
-                            )
+        for dt in tqdm(self.open_market_days, desc=f"Processing {symbol}"):
+            dt = self.parse_dt_str(dt)
+            contract_strikes = self.fetch_0dte_strikes(stock_candles, dt)
+            for contract_type in contract_types:
+                for strike in contract_strikes[contract_type]:
+                    contracts.append(
+                        self.fetch_0dte_bars(
+                            symbol,
+                            strike,
+                            contract_type,
+                            dt,
                         )
-                        time.sleep(10) # Sleep to avoid hitting API rate limits
-            cur_dt += timedelta(days=1)
+                    )
 
         save_contracts_as_json(contracts)
         return contracts
