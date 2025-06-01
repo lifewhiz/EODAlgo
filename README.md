@@ -76,9 +76,9 @@ python main.py backtest --symbol SPX --strategy-name PutsExpiration
 To create a custom strategy, inherit from `BaseStrategy` and implement the following methods:
 
 ```python
-entry(self, contract: Contract, candles: DataFrame[CandleModel]) -> bool
+entry(self, contract: Contract, option_candles: DataFrame[CandleModel], stock_candles: DataFrame[CandleModel]) -> bool
 ```
 
 ```python
-exit(self, contract: Contract, candles: DataFrame[CandleModel]) -> bool
+exit(self, contract: Contract, option_candles: DataFrame[CandleModel], stock_candles: DataFrame[CandleModel]) -> bool
 ```

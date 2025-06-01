@@ -20,8 +20,8 @@ class DataHandler:
             self._index_contracts_by_date(load_contracts_from_json(symbol))
         )
         self.option_candles_by_symbol = self._index_option_candles()
-        self.stock_candles_df: DataFrame[CandleModel] = (
-            self._load_and_validate_stock_data()
+        self.stock_candles_dt_df: Dict[str, DataFrame[CandleModel]] = (
+            self._index_stock_candles()
         )
 
     def parse_dt(self, dt: date) -> str:
@@ -55,6 +55,10 @@ class DataHandler:
             for symbol, candles in option_candles_by_symbol.items()
         }
 
+    def _index_stock_candles(self) -> Dict[str, DataFrame[CandleModel]]:
+        stock_candles = self._load_and_validate_stock_data()
+        return {self.parse_dt(dt): df for dt, df in stock_candles.groupby("date")}
+
     def _prepare_candle_df(self, candles: List[Candle]) -> DataFrame[CandleModel]:
         if MARKET_CLOSE not in {c.timestamp.time() for c in candles}:
             candles.append(
@@ -80,11 +84,8 @@ class DataHandler:
     def get_contracts_for_date(self, dt: date) -> List[Contract]:
         return self.contracts_by_date.get(self.parse_dt(dt), [])
 
-    def get_stock_close_price(self, dt: date) -> float:
-        df = self.stock_candles_df[self.stock_candles_df["date"] == dt]
-        df = df.sort_values("timestamp")
-        row = df[df["timestamp"].dt.time == MARKET_CLOSE].iloc[0]
-        return row.close
-
     def get_option_candles(self, symbol: str) -> DataFrame[CandleModel]:
         return self.option_candles_by_symbol[symbol]
+
+    def get_stock_candles(self, dt: date) -> DataFrame[CandleModel]:
+        return self.stock_candles_dt_df[self.parse_dt(dt)]

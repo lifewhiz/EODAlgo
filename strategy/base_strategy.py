@@ -17,17 +17,27 @@ class BaseStrategy(ABC):
         self.portfolio = Portfolio()
 
     @abstractmethod
-    def entry(self, contract: Contract, candles: DataFrame[CandleModel]) -> bool:
+    def entry(
+        self,
+        contract: Contract,
+        option_candles: DataFrame[CandleModel],
+        stock_candles: DataFrame[CandleModel],
+    ) -> bool:
         pass
 
     @abstractmethod
-    def exit(self, contract: Contract, candles: DataFrame[CandleModel]) -> bool:
+    def exit(
+        self,
+        contract: Contract,
+        option_candles: DataFrame[CandleModel],
+        stock_candles: DataFrame[CandleModel],
+    ) -> bool:
         pass
 
     def get_current_time(self, candles: DataFrame[CandleModel]) -> time:
-        return self.get_current_candle(candles).timestamp.time()
+        return self.get_current_op_candle(candles).timestamp.time()
 
-    def get_current_candle(self, candles: DataFrame[CandleModel]) -> CandleModel:
+    def get_current_op_candle(self, candles: DataFrame[CandleModel]) -> CandleModel:
         return candles.iloc[-1]
 
     def compute_mid_price(self, candle: CandleModel) -> Optional[float]:
@@ -72,20 +82,23 @@ class BaseStrategy(ABC):
         self,
         contract: Contract,
         current_date: date,
-        candles: DataFrame[CandleModel],
-        stock_close: float,
+        option_candles: DataFrame[CandleModel],
+        stock_candles: DataFrame[CandleModel],
         buy_price: float,
     ) -> bool:
-        current_candle = self.get_current_candle(candles)
-        current_time = self.get_current_time(candles)
-        if self.exit(contract, candles) or current_time == MARKET_CLOSE:
+        current_op_candle = self.get_current_op_candle(option_candles)
+        current_time = self.get_current_time(option_candles)
+        if (
+            self.exit(contract, option_candles, stock_candles)
+            or current_time == MARKET_CLOSE
+        ):
             trade = self._compute_exit_result(
-                stock_close=stock_close,
+                stock_close=stock_candles.iloc[-1].close,
                 contract=contract,
                 current_date=current_date,
                 current_time=current_time,
                 buy_price=buy_price,
-                mid_price=self.compute_mid_price(current_candle),
+                mid_price=self.compute_mid_price(current_op_candle),
             )
             self.portfolio.record_trade(trade)
             return True
