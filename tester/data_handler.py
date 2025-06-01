@@ -9,7 +9,7 @@ from data.funcs import get_stock_symbol
 from data.models import Candle, Contract
 from data.options.process_0dte import load_contracts_from_json
 from data.stocks.process_stocks import load_stock_from_json
-from strategy.base_strategy import MARKET_CLOSE
+from constants import MARKET_CLOSE
 from tester.models import CandleModel
 
 

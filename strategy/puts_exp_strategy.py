@@ -4,11 +4,12 @@ from strategy.base_strategy import BaseStrategy
 from tester.models import CandleModel
 from pandera.typing import DataFrame
 
+BUY_TIME = time(19, 35)
+
 
 class PutsExpirationStrategy(BaseStrategy):
     def __init__(self, symbol: str):
         super().__init__(symbol=symbol)
-        self.buy_time = time(19, 35)  # 3:35 PM Eastern (19:35 UTC)
 
     def entry(
         self,
@@ -18,7 +19,7 @@ class PutsExpirationStrategy(BaseStrategy):
     ) -> bool:
         return (
             contract.contract_type == ContractType.PUT
-            and self.get_current_time(option_candles) >= self.buy_time
+            and self.get_current_time(option_candles) >= BUY_TIME
         )
 
     def exit(

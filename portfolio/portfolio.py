@@ -1,30 +1,30 @@
-from typing import List
-from portfolio.models import Trade
+from typing import Dict, List
+from portfolio.models import Position
 
 
 class Portfolio:
     def __init__(self):
-        self.trades: List[Trade] = []
-        self.active_trades: List[Trade] = []
-        self.total_profit = 0.0
-        self.total_return = 0.0
-        self.trade_count = 0
+        self.positions_dt: Dict[str, Position] = dict()
 
-    def record_trade(self, trade: Trade):
-        self.trades.append(trade)
-        self.active_trades.append(trade)
-        self.total_profit += trade.profit
-        self.total_return += trade.percent_return
-        self.trade_count += 1
+    def record_position(self, symbol: str, position: Position):
+        self.positions_dt[symbol] = position
+
+    def get_position(self, symbol: str) -> Position:
+        return self.positions_dt[symbol]
 
     def summary(self):
-        total_profit = self.total_profit
-        avg_return = self.total_return / self.trade_count if self.trade_count else 0
-        wins = [t for t in self.trades if t.profit > 0]
-        losses = [t for t in self.trades if t.profit < 0]
-        win_rate = (len(wins) / self.trade_count) * 100 if self.trade_count else 0
-        avg_gain = sum(t.profit for t in wins) / len(wins) if wins else 0
-        avg_loss = sum(t.profit for t in losses) / len(losses) if losses else 0
+        positions = list(self.positions_dt.values())
+        position_count = len(positions)
+
+        total_profit = sum(p.pnl for p in positions)
+        total_return = sum(p.pct_change for p in positions)
+        avg_return = total_return / position_count if position_count else 0
+
+        wins = [p for p in positions if p.pnl > 0]
+        losses = [p for p in positions if p.pnl < 0]
+        win_rate = (len(wins) / position_count) * 100 if position_count else 0
+        avg_gain = sum(p.pnl for p in wins) / len(wins) if wins else 0
+        avg_loss = sum(p.pnl for p in losses) / len(losses) if losses else 0
         risk_reward = avg_gain / abs(avg_loss) if avg_loss != 0 else float("inf")
 
         print(f"Total P&L: {total_profit:.2f}")
@@ -33,7 +33,7 @@ class Portfolio:
         print(f"Avg Gain: {avg_gain:.2f}, Avg Loss: {avg_loss:.2f}")
         print(f"Risk-Reward Ratio: {risk_reward:.2f}\n")
 
-        for t in self.trades:
+        for p in positions:
             print(
-                f"{t.symbol} | {t.expiry} | Strike: {t.strike} | Buy: {t.buy_price:.2f} → IV: {t.intrinsic_value:.2f} → P&L: {t.profit:.2f} ({t.percent_return:.1f}%)"
+                f"{p.contract.symbol} | {p.contract.expiry} | Strike: {p.contract.strike} | {p.entry_price:.2f} → {p.exit_price:.2f} | P&L: {p.pnl:.2f} ({p.pct_change:.1f}%)"
             )
