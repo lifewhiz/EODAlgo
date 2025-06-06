@@ -9,7 +9,7 @@ from data.funcs import get_stock_symbol
 from data.models import Candle, Contract
 from data.options.process_0dte import load_contracts_from_json
 from data.stocks.process_stocks import load_stock_from_json
-from constants import MARKET_CLOSE
+from constants import MARKET_OPEN, MARKET_CLOSE
 from tester.models import CandleModel
 
 
@@ -85,7 +85,27 @@ class DataHandler:
         return self.contracts_by_date.get(self.parse_dt(dt), [])
 
     def get_option_candles(self, symbol: str) -> DataFrame[CandleModel]:
-        return self.option_candles_by_symbol[symbol]
+        return self.process_candles(self.option_candles_by_symbol[symbol])
 
     def get_stock_candles(self, dt: date) -> DataFrame[CandleModel]:
-        return self.stock_candles_dt_df[self.parse_dt(dt)]
+        return self.process_candles(self.stock_candles_dt_df[self.parse_dt(dt)])
+
+    def process_candles(
+        self, candles: DataFrame[CandleModel]
+    ) -> DataFrame[CandleModel]:
+        candles = candles[
+            (candles["timestamp"].dt.time <= MARKET_CLOSE)
+            & (candles["timestamp"].dt.time >= MARKET_OPEN)
+        ]
+        candles = candles.set_index("timestamp", drop=False)
+        dt = candles["date"].iloc[-1]
+        candles = candles.reindex(
+            pd.date_range(
+                start=self._get_tz_aware_datetime(dt, MARKET_OPEN),
+                end=self._get_tz_aware_datetime(dt, MARKET_CLOSE),
+                freq="1min",
+            ),
+            method="bfill",
+        )
+        assert candles[candles["close"].isna()].empty, "Missing data in candles"
+        return candles

@@ -53,8 +53,8 @@ class Position:
 
     def summary(self) -> str:
         if not self.closed:
-            return "Position is still open."
-        return (
+            print("Position is still open.")
+        print(
             f"Position Summary:\n"
             f"Symbol: {self.contract.symbol}\n"
             f"Expiry: {self.contract.expiry}\n"

@@ -1,24 +1,11 @@
-from datetime import date
 import typer
-from cli.analysis_commands import metric_analysis
+from cli.analysis_helper import analysis_command
+from cli.backtest_helper import backtest_command
 from constants import END_DT, START_DT
 from data.api.polygon import PolygonAPI
 from data.options.fetch_0dte import Fetch0DTE
-from strategy.puts_exp_strategy import PutsExpirationStrategy
-from tester.backtester import Backtester
 
 app = typer.Typer()
-
-
-def backtest_command(symbol: str, strategy_name: str):
-    if strategy_name == "PutsExpiration":
-        strategy = PutsExpirationStrategy(symbol=symbol)
-    else:
-        raise ValueError(f"Unknown strategy: {strategy_name}")
-
-    backtester = Backtester(strategy)
-    portfolio = backtester.run(start_date=START_DT, end_date=END_DT)
-    portfolio.summary()
 
 
 def data_command(symbol):
@@ -50,7 +37,7 @@ def analysis(symbol: str = "SPX"):
     """
     Runs EOD activation/movement/expiry gain analysis for a given symbol.
     """
-    metric_analysis(symbol)
+    analysis_command(symbol)
 
 
 if __name__ == "__main__":

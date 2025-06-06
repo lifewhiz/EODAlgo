@@ -39,12 +39,11 @@ class Backtester:
         stock_candles = self.data.get_stock_candles(current_date)
 
         for contract in daily_contracts:
-            self._process_day_minutely(contract, current_date, stock_candles)
+            self._process_day_minutely(contract, stock_candles)
 
     def _process_day_minutely(
         self,
         contract: Contract,
-        current_date: date,
         stock_candles: DataFrame[CandleModel],
     ):
         option_candles: DataFrame[CandleModel] = self.data.get_option_candles(
@@ -58,32 +57,21 @@ class Backtester:
             if not self.strategy.entry_wrapper(contract, op_slice, stock_slice):
                 continue
 
-            entry_op_candle = op_slice.iloc[-1]
-            self._process_contract(
-                contract, current_date, entry_op_candle, stock_candles
-            )
+            self._process_contract(contract, option_candles, stock_candles)
             break  # Only one entry per contract per day
 
     def _process_contract(
         self,
         contract: Contract,
-        current_date: date,
-        entry_op_candle: CandleModel,
+        option_candles: DataFrame[CandleModel],
         stock_candles: DataFrame[CandleModel],
     ):
-        minute: pd.Timestamp = entry_op_candle.timestamp
+        cur_time: pd.Timestamp = option_candles.iloc[0].timestamp
+        end_time = cur_time.replace(hour=20, minute=0)
 
-        option_candles: DataFrame[CandleModel] = self.data.get_option_candles(
-            contract.symbol
-        )
-        option_candles = option_candles[option_candles["date"] == current_date]
-        option_candles["time"] = option_candles["timestamp"].dt.time
-
-        end_time = minute.replace(hour=20, minute=0)
-
-        while minute <= end_time:
-            exit_op_candles = option_candles[option_candles["time"] <= minute.time()]
-            exit_stock_candles = stock_candles[stock_candles["timestamp"] <= minute]
+        while cur_time <= end_time:
+            exit_op_candles = option_candles[option_candles["timestamp"] <= cur_time]
+            exit_stock_candles = stock_candles[stock_candles["timestamp"] <= cur_time]
 
             if self.strategy.exit_wrapper(
                 contract=contract,
@@ -92,19 +80,11 @@ class Backtester:
             ):
                 return
 
-            minute += timedelta(minutes=1)
+            cur_time += timedelta(minutes=1)
 
         # Final fallback exit (end of day)
-        final_option_candles = option_candles[option_candles["time"] <= MARKET_CLOSE]
-        final_stock_candles = stock_candles[
-            stock_candles["timestamp"].dt.time <= MARKET_CLOSE
-        ]
-
-        assert (
-            final_option_candles.iloc[-1].time == MARKET_CLOSE
-        ), f"Expected last candle to be market close for {contract.symbol}."
         assert self.strategy.exit_wrapper(
             contract=contract,
-            option_candles=final_option_candles,
-            stock_candles=final_stock_candles,
+            option_candles=option_candles,
+            stock_candles=stock_candles,
         ), f"Strategy did not exit by EOD for {contract.symbol}."

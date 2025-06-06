@@ -31,5 +31,8 @@ class Portfolio:
         print(f"Average Return: {avg_return:.2f}%")
         print(f"Win Rate: {win_rate:.2f}%")
         print(f"Avg Gain: {avg_gain:.2f}, Avg Loss: {avg_loss:.2f}")
+        print(f"Number of Positions: {position_count}")
         print(f"Risk-Reward Ratio: {risk_reward:.2f}\n")
 
+        for p in positions:
+            p.summary()

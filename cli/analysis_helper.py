@@ -4,7 +4,7 @@ from analysis.expiry import plot_expiry_gains
 from data.data_handler import DataHandler
 
 
-def metric_analysis(symbol: str):
+def analysis_command(symbol: str):
     print(f"Running EOD analysis for {symbol}...")
 
     handler = DataHandler(symbol)
