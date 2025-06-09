@@ -26,17 +26,18 @@ class Position:
     def get_mid_price(self, candle: CandleModel) -> float:
         return (candle.high + candle.low) / 2
 
-    def close(self, exit_option_candle: CandleModel, stock_close: float) -> None:
-        assert not self.closed, "Position already closed"
-
-        self.closed = True
-        self.exit_option_candle = exit_option_candle
+    def compute_metrics(self, option_candle: CandleModel, stock_close: float) -> None:
+        self.exit_option_candle = option_candle
 
         self.stock_close = stock_close
-        self.exit_price = self._calculate_exit_price(exit_option_candle, stock_close)
+        self.exit_price = self._calculate_exit_price(option_candle, stock_close)
 
         self.pnl = (self.exit_price - self.entry_price) * 100
-        self.pct_change = self.pnl / self.entry_price
+        self.pct_change = self.pnl / self.entry_price / 100
+
+    def close(self) -> None:
+        assert not self.closed, "Position already closed"
+        self.closed = True
 
     def _calculate_exit_price(
         self, exit_option_candle: CandleModel, stock_close: float
@@ -55,10 +56,7 @@ class Position:
         if not self.closed:
             print("Position is still open.")
         print(
-            f"Position Summary:\n"
-            f"Symbol: {self.contract.symbol}\n"
-            f"Expiry: {self.contract.expiry}\n"
-            f"Strike: {self.contract.strike}\n"
-            f"P&L: {self.pnl:.2f}\n"
-            f"Percent Change: {self.pct_change:.2f}%"
+            f"{self.contract.symbol} | {self.contract.expiry.date()} | Strike: {int(self.contract.strike)} | "
+            f"{self.entry_time.time()} {self.entry_price:.2f} → {self.exit_option_candle.timestamp.time()}  {self.exit_price:.2f} | "
+            f"P&L: {self.pnl:.2f} ({100*self.pct_change:.1f}%)"
         )

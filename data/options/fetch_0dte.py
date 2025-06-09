@@ -132,7 +132,7 @@ class Fetch0DTE:
             )
             contract = Contract(
                 symbol=contract_symbol,
-                underlying_symbol=self.get_stock_symbol(symbol),
+                underlying_symbol=get_stock_symbol(symbol),
                 expiry=dt,
                 strike=contract_strike,
                 contract_type=contract_type,

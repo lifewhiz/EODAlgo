@@ -1,13 +1,11 @@
-from datetime import date, timedelta
-from typing import List
+from datetime import date, datetime, timedelta
+from typing import Dict, List, Optional
 
-import pandas as pd
 import pandas_market_calendars as mcal
 from pandera.typing import DataFrame
 from tqdm import tqdm
 
 from data.models import Contract
-from constants import MARKET_CLOSE
 from strategy.base_strategy import BaseStrategy
 from tester.models import CandleModel
 from data.data_handler import DataHandler
@@ -16,7 +14,7 @@ from data.data_handler import DataHandler
 class Backtester:
     def __init__(self, strategy: BaseStrategy):
         self.strategy = strategy
-        self.data = DataHandler(strategy.symbol)
+        self.data = DataHandler(strategy.symbol, include_synthetic=True)
 
     def _get_trading_days(self, start: date, end: date) -> List[date]:
         calendar = mcal.get_calendar("NYSE")
@@ -35,38 +33,41 @@ class Backtester:
         return self.strategy.portfolio
 
     def _process_day(self, current_date: date):
-        daily_contracts = self.data.get_contracts_for_date(current_date)
+        contracts = self.data.get_contracts_for_date(current_date)
         stock_candles = self.data.get_stock_candles(current_date)
 
-        for contract in daily_contracts:
-            self._process_day_minutely(contract, stock_candles)
+        option_map: Dict[Contract, DataFrame[CandleModel]] = {
+            contract: self.data.get_option_candles(contract.symbol)
+            for contract in contracts
+        }
 
-    def _process_day_minutely(
-        self,
-        contract: Contract,
-        stock_candles: DataFrame[CandleModel],
-    ):
-        option_candles: DataFrame[CandleModel] = self.data.get_option_candles(
-            contract.symbol
-        )
-
-        for i in range(len(option_candles)):
-            op_slice = option_candles.iloc[: i + 1]
+        for i in range(len(stock_candles)):
             stock_slice = stock_candles.iloc[: i + 1]
+            sliced_option_map = {
+                c: candles.iloc[: i + 1] for c, candles in option_map.items()
+            }
 
-            if not self.strategy.entry_wrapper(contract, op_slice, stock_slice):
-                continue
+            selected_contract: Optional[Contract] = self.strategy.entry_wrapper(
+                contracts_to_candles=sliced_option_map,
+                stock_candles=stock_slice,
+            )
 
-            self._process_contract(contract, option_candles, stock_candles)
-            break  # Only one entry per contract per day
+            if selected_contract is not None:
+                self._process_contract(
+                    stock_slice.iloc[-1].timestamp + timedelta(minutes=1),
+                    selected_contract,
+                    option_map[selected_contract],
+                    stock_candles,
+                )
+                break
 
     def _process_contract(
         self,
+        cur_time: datetime,
         contract: Contract,
         option_candles: DataFrame[CandleModel],
         stock_candles: DataFrame[CandleModel],
     ):
-        cur_time: pd.Timestamp = option_candles.iloc[0].timestamp
         end_time = cur_time.replace(hour=20, minute=0)
 
         while cur_time <= end_time:

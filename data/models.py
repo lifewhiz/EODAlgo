@@ -19,7 +19,6 @@ class Candle:
     vwap: float
     timestamp: datetime
 
-
 @dataclass
 class Contract:
     symbol: str
@@ -28,3 +27,6 @@ class Contract:
     strike: float
     contract_type: ContractType
     data: List[Candle]
+
+    def __hash__(self):
+        return id(self.symbol)

@@ -14,15 +14,19 @@ from tester.models import CandleModel
 
 
 class DataHandler:
-    def __init__(self, symbol: str):
+    def __init__(self, symbol: str, include_synthetic: bool = False):
         self.symbol = symbol
+        print(f"Loading data for {symbol}...")
         self.contracts_by_date: Dict[str, List[Contract]] = (
-            self._index_contracts_by_date(load_contracts_from_json(symbol))
+            self._index_contracts_by_date(
+                load_contracts_from_json(symbol, include_synthetic)
+            )
         )
         self.option_candles_by_symbol = self._index_option_candles()
         self.stock_candles_dt_df: Dict[str, DataFrame[CandleModel]] = (
             self._index_stock_candles()
         )
+        print(f"Data loaded for {symbol} with {len(self.contracts_by_date)} dates.")
 
     def parse_dt(self, dt: date) -> str:
         return dt.strftime("%Y-%m-%d")
@@ -78,6 +82,7 @@ class DataHandler:
         df = pd.DataFrame([vars(c) for c in candles])
         df = df.sort_values("timestamp")
         df["date"] = df["timestamp"].dt.date
+        df.ffill(inplace=True)
         CandleModel.validate(df)
         return df
 

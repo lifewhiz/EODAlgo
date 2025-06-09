@@ -8,6 +8,7 @@ from pathlib import Path
 from data.models import Candle, Contract, ContractType
 
 BASE_DIR = Path("data/storage/options")
+SYNTHETIC_BASE_DIR = Path("data/storage/synthetic_options")
 os.makedirs(BASE_DIR, exist_ok=True)
 
 
@@ -29,40 +30,48 @@ def save_contracts_as_json(contracts: List[Contract]):
             json.dump(asdict(contract), f, cls=EnhancedJSONEncoder, indent=2)
 
 
-def load_contracts_from_json(symbol: str) -> List[Contract]:
+def load_contracts_from_json(
+    symbol: str, include_synthetic: bool = False
+) -> List[Contract]:
     contracts = []
+    dirs = [BASE_DIR, SYNTHETIC_BASE_DIR] if include_synthetic else [BASE_DIR]
 
-    for file_name in os.listdir(BASE_DIR):
-        if not file_name.endswith(".json") or not symbol in file_name:
+    for base_dir in dirs:
+        if not os.path.exists(base_dir):
+            print(f"Directory {base_dir} does not exist. Skipping.")
             continue
 
-        file_path = os.path.join(BASE_DIR, file_name)
+        for file_name in os.listdir(base_dir):
+            if not file_name.endswith(".json") or not symbol in file_name:
+                continue
 
-        with open(file_path, "r") as f:
-            raw = json.load(f)
+            file_path = os.path.join(base_dir, file_name)
 
-        candles = [
-            Candle(
-                open=c["open"],
-                high=c["high"],
-                low=c["low"],
-                close=c["close"],
-                volume=c["volume"],
-                vwap=c["vwap"],
-                timestamp=datetime.fromisoformat(c["timestamp"]),
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+
+            candles = [
+                Candle(
+                    open=c["open"],
+                    high=c["high"],
+                    low=c["low"],
+                    close=c["close"],
+                    volume=c["volume"],
+                    vwap=c["vwap"],
+                    timestamp=datetime.fromisoformat(c["timestamp"]),
+                )
+                for c in raw["data"]
+            ]
+
+            contract = Contract(
+                symbol=raw["symbol"],
+                underlying_symbol=raw["underlying_symbol"],
+                expiry=datetime.fromisoformat(raw["expiry"]),
+                strike=raw["strike"],
+                contract_type=ContractType(raw["contract_type"]),
+                data=candles,
             )
-            for c in raw["data"]
-        ]
 
-        contract = Contract(
-            symbol=raw["symbol"],
-            underlying_symbol=raw["underlying_symbol"],
-            expiry=datetime.fromisoformat(raw["expiry"]),
-            strike=raw["strike"],
-            contract_type=ContractType(raw["contract_type"]),
-            data=candles,
-        )
-
-        contracts.append(contract)
+            contracts.append(contract)
 
     return contracts
